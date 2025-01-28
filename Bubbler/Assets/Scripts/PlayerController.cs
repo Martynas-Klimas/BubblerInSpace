@@ -9,24 +9,41 @@ using static UnityEngine.Random;
 public class PlayerController : MonoBehaviour
 {
     private Vector3 shrinkModifier;
-    private Rigidbody2D circleRigidbody;
-    //private float distanceToCollider;
-    private GameObject shootingProjectile;
     private Vector2 target;
-    private GameObject playerModel;
-    private int health;
+    private Vector2 direction;
+    private Rigidbody2D circleRigidbody;
     private AudioSource audioSource;
+    private float angle;
+    private int health;
 
+    
     public HealthBar healthBar;
     public GameFinishedScreen gameFinishedScreen;
 
     public float angleOffset;
     public bool stopMoving = false;
+
+    [Header("Child Objects")]
+
+    [SerializeField]
+    [Tooltip("Sprite of the main circle")]
+    private GameObject circleModel;
+
+    [SerializeField]
+    [Tooltip("Sprite for loose animation")]
+    private GameObject loseHumanModel;
+
+    [SerializeField]
+    [Tooltip("Sprite for win animation")]
+    private GameObject winHumanModel;
+
     [Header("Movement Variables")]
     [Tooltip("After what time the player moves/fires")]
     public float moveCooldown = 1f;
+
     [Tooltip("The force bubble gets every move")]
     public float moveForce;
+
     [Header("For Scaling")]
     //[Tooltip("Initial/Default scale")]
     //public float defaultScale;
@@ -34,29 +51,34 @@ public class PlayerController : MonoBehaviour
     public int timesToShrink = 20;
     [Tooltip("When scale reaches this size, gameOver is called")]
     public float gameOverScale;
+
     [Header("Shooting Projectile Stats")]
     [Tooltip("Shooting projectile force given to shoot out...")]
     public float shootingProjectileForce;
+
     [Header("Animation")]
     [Tooltip("Time between the animation start and then the push")]
     public float timeBetweenAnimMove;
     public Animator animationLoop;
+
+    [Header("Restart and finish delays")]
+    public float restartDelay = 2f;
+    public float gameFinishedDelay = 2.5f;
     void Start()
     {
         //make sure game isnt frozen
         Time.timeScale = 1;
         audioSource = GetComponent<AudioSource>();
-        float shrinkModifierF = (transform.GetChild(0).transform.localScale.x - gameOverScale) / timesToShrink;
-        shrinkModifier = new Vector3(shrinkModifierF, shrinkModifierF, shrinkModifierF);
-        playerModel = transform.GetChild(0).gameObject;
-        if (!stopMoving) { InvokeRepeating("moveFunction", 1, moveCooldown); }
         circleRigidbody = GetComponent<Rigidbody2D>();
-        shootingProjectile = GameObject.Find("Shooting Projectile");
-        //Invoke("runAnimationLoopTrue", timeForFirstAnimation);
 
         //health bar stuff
-        health = timesToShrink;
+        health = timesToShrink + 2;
         healthBar.SetMaxHealth(health);
+
+        float shrinkModifierF = (circleModel.transform.localScale.x - gameOverScale) / timesToShrink;
+        shrinkModifier = new Vector3(shrinkModifierF, shrinkModifierF, shrinkModifierF);
+        
+        if (!stopMoving) { InvokeRepeating("MoveFunction", 1, moveCooldown); }
     }
      void runAnimationLoopTrue()
     {
@@ -77,14 +99,12 @@ public class PlayerController : MonoBehaviour
     {
         isHovered = false;
     }
-    private Vector2 direction;
-    float angle;
+    
     void Update()
     {
 
         direction = Camera.main.ScreenToWorldPoint(Input.mousePosition);
         direction -= new Vector2(transform.position.x, transform.position.y);
-        //Debug.Log(direction);
         direction.Normalize();
         target = new Vector2(transform.position.x + direction.x, transform.position.y + direction.y);
         angle = Mathf.Atan2(direction.x, direction.y) * Mathf.Rad2Deg;
@@ -95,36 +115,35 @@ public class PlayerController : MonoBehaviour
         //}
     }
 
-    private void moveFunction()
+    private void MoveFunction()
     {
         if (isHovered) { return; }
 
-        playerModel.transform.eulerAngles = new Vector3(0, 0, -angle + angleOffset);
+        circleModel.transform.eulerAngles = new Vector3(0, 0, -angle + angleOffset);
         runAnimationLoopTrue();
-        Invoke("moveCharacter", timeBetweenAnimMove);
+        Invoke("MoveCharacter", timeBetweenAnimMove);
     }
-    private void moveCharacter()
+    private void MoveCharacter()
     {
         Invoke("runAnimationLoopFalse", 1-timeBetweenAnimMove);
         
-
         //shootProjectile();
-        if (transform.GetChild(0).transform.localScale.x <= gameOverScale)
+        if (circleModel.transform.localScale.x <= gameOverScale)
         {
-            transform.GetChild(0).gameObject.SetActive(false);
-            transform.GetChild(2).gameObject.SetActive(true);
-            transform.GetChild(3).gameObject.SetActive(false);
-            transform.GetChild(2).GetComponent<Animator>().SetBool("Dead",true);
-            CancelInvoke("moveFunction");
+            circleModel.gameObject.SetActive(false);
+            loseHumanModel.gameObject.SetActive(true);
+            winHumanModel.gameObject.SetActive(false);
+
+            loseHumanModel.GetComponent<Animator>().SetBool("Dead",true);
+            CancelInvoke("MoveFunction");
             Debug.Log("GameOver");
             audioSource.Play();
-            //play bubble pop animation
-            Invoke("RestartScene", 2);
+            Invoke("RestartScene", restartDelay);
         }
         else
         {
             circleRigidbody.AddForce(-direction * moveForce, ForceMode2D.Impulse);
-            transform.GetChild(0).transform.localScale -= shrinkModifier;
+            circleModel.transform.localScale -= shrinkModifier;
             //distanceToCollider = transform.GetChild(0).transform.localScale.x / 2;
 
             //healthBar
@@ -132,18 +151,13 @@ public class PlayerController : MonoBehaviour
             healthBar.SetHealth(health);
         }
     }
-    private void shootProjectile()
-    {
-        Rigidbody2D shootingProjectileRigid = shootingProjectile.GetComponent<Rigidbody2D>();
-        //shootingProjectile.transform.position = transform.position + new Vector3(direction.x, direction.y, -1) * distanceToCollider;
-        shootingProjectileRigid.linearVelocity = Vector2.zero;
-        shootingProjectileRigid.AddForce(direction * shootingProjectileForce, ForceMode2D.Impulse);
-    }
+   
     private void OnDrawGizmos()
     {
         Gizmos.color = Color.yellow;
         Gizmos.DrawLine(transform.position, target);
     }
+
     private void OnTriggerEnter2D(Collider2D collision)
     {
         if(collision.transform.tag == "Finish")
@@ -151,21 +165,17 @@ public class PlayerController : MonoBehaviour
             Debug.Log("Game finished");
 
             // win animation run
-            transform.GetChild(0).gameObject.SetActive(false);
-            transform.GetChild(3).GetComponent<Animator>().SetBool("Win", true);
-            CancelInvoke("moveFunction");
+            circleModel.gameObject.SetActive(false);
+            winHumanModel.GetComponent<Animator>().SetBool("Win", true);
+            CancelInvoke("MoveFunction");
 
             //need to invoke end because player needs to see the game over animation
             healthBar.gameObject.SetActive(false);
-            Invoke("restartGame", 2.5f);//game over screen loads after 2 seconds
-            //Time.timeScale = 0; // Causes the anim not to play, i just turned off the movement
-
-
-            //SceneManager.LoadLevel();
+            Invoke("FinishGame", gameFinishedDelay);//game over screen loads after 2.5 seconds
 
         }
     }
-    private void restartGame()
+    private void FinishGame()
     {
         gameFinishedScreen.GameFinished();
 
