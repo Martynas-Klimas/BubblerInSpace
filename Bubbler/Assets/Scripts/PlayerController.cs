@@ -72,10 +72,10 @@ public class PlayerController : MonoBehaviour
         circleRigidbody = GetComponent<Rigidbody2D>();
 
         //health bar stuff
-        health = timesToShrink + 2;
+        health = timesToShrink;
         healthBar.SetMaxHealth(health);
 
-        float shrinkModifierF = (circleModel.transform.localScale.x - gameOverScale) / timesToShrink;
+        float shrinkModifierF = (circleModel.transform.localScale.x - gameOverScale) / (timesToShrink - 1);
         shrinkModifier = new Vector3(shrinkModifierF, shrinkModifierF, shrinkModifierF);
         
         if (!stopMoving) { InvokeRepeating("MoveFunction", 1, moveCooldown); }
@@ -134,10 +134,10 @@ public class PlayerController : MonoBehaviour
             loseHumanModel.gameObject.SetActive(true);
             winHumanModel.gameObject.SetActive(false);
 
+            audioSource.Play();
             loseHumanModel.GetComponent<Animator>().SetBool("Dead",true);
             CancelInvoke("MoveFunction");
             Debug.Log("GameOver");
-            audioSource.Play();
             Invoke("RestartScene", restartDelay);
         }
         else
@@ -160,7 +160,7 @@ public class PlayerController : MonoBehaviour
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
-        if(collision.transform.tag == "Finish")
+        if(collision.transform.CompareTag("Finish"))
         {
             Debug.Log("Game finished");
 
@@ -173,6 +173,13 @@ public class PlayerController : MonoBehaviour
             healthBar.gameObject.SetActive(false);
             Invoke("FinishGame", gameFinishedDelay);//game over screen loads after 2.5 seconds
 
+        }
+        //pickup an air bubble
+        if(collision.transform.CompareTag("PickUp"))
+        {
+            health += AirPickup.airAdded;
+            healthBar.SetHealth(health);
+            circleModel.transform.localScale += shrinkModifier * AirPickup.airAdded;
         }
     }
     private void FinishGame()
