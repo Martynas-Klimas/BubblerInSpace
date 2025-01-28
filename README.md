@@ -8,6 +8,7 @@ A physics based game where you try to escape from a maze in space and return to 
 The project was created using Unity version 6000.0.34f1. 
 
 To setup the project locally, download the files, or clone the repository. Then use Unity Hub and add "Bubbler" folder to Unity Hub via the "add files from disk" option. 
+Large Unity game engine files and folders like "Library" are not included in this repository.
 ## Changelog
 2025-01-28
 
